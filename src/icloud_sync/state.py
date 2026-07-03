@@ -39,6 +39,7 @@ class FolderState:
     last_error: str | None = None
     needs_reconnect: bool = False
     progress: Progress | None = None
+    filters_sig: str | None = None  # excludes in effect at the last successful run
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FolderState:

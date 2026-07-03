@@ -33,6 +33,7 @@ class SyncFolder:
     interval_minutes: int | None = None
     check_access: bool = False
     keep_parent: bool = False
+    excludes: list[str] = field(default_factory=list)
 
     @property
     def remote_full(self) -> str:

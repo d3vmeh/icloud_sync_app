@@ -89,6 +89,12 @@ class TestRcloneCommands:
         folder = make_folder(local_path="/data/sync")
         assert str(folder.local_target) == "/data/sync"
 
+    def test_excludes_become_flags(self):
+        folder = make_folder(excludes=["node_modules/**", "*.tmp"])
+        cmd = rclone.build_command(folder, "pull")
+        assert cmd.count("--exclude") == 2
+        assert "node_modules/**" in cmd and "*.tmp" in cmd
+
 
 class TestRcloneParsing:
     def test_stats_line(self):
@@ -108,6 +114,16 @@ class TestRcloneParsing:
         assert rclone.is_auth_error("CRITICAL: 401 Unauthorized")
         assert rclone.is_auth_error("trust token expired, please reauthenticate")
         assert not rclone.is_auth_error("copied 5 files")
+
+    def test_auth_errors_only_count_at_error_level(self):
+        # stats lines are full of numbers that can contain a literal 401
+        stats = {"level": "notice", "msg": "stats",
+                 "stats": {"transferTime": 401.6, "totalTransfers": 10401}}
+        assert not rclone.entry_is_auth_error(stats)
+        assert rclone.entry_is_auth_error(
+            {"level": "error", "msg": "401 Unauthorized"})
+        assert not rclone.entry_is_auth_error(
+            {"level": "info", "msg": "401 objects listed"})
 
 
 class TestState:
@@ -132,3 +148,27 @@ class TestState:
         paths.ensure_dirs()
         paths.state_file("docs-abcd").write_text("{broken json")
         assert read_state("docs-abcd") == FolderState()
+
+
+class TestRunnerResyncDecision:
+    def _decide(self, folder, state, action="bisync"):
+        import io
+
+        from icloud_sync.runner import _effective_action
+        return _effective_action(folder, action, state, io.StringIO())
+
+    def test_filter_change_escalates_bisync_to_resync(self, monkeypatch):
+        monkeypatch.setattr("icloud_sync.runner._bisync_initialized", lambda f: True)
+        folder = make_folder(excludes=["node_modules/**"])
+        assert self._decide(folder, FolderState(filters_sig="")) == "bisync-resync"
+
+    def test_unchanged_filters_keep_plain_bisync(self, monkeypatch):
+        monkeypatch.setattr("icloud_sync.runner._bisync_initialized", lambda f: True)
+        folder = make_folder(excludes=["node_modules/**"])
+        state = FolderState(filters_sig="node_modules/**")
+        assert self._decide(folder, state) == "bisync"
+
+    def test_filter_change_never_affects_pull(self, monkeypatch):
+        monkeypatch.setattr("icloud_sync.runner._bisync_initialized", lambda f: True)
+        folder = make_folder(excludes=["a"])
+        assert self._decide(folder, FolderState(filters_sig=""), "pull") == "pull"

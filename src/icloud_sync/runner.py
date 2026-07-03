@@ -25,12 +25,34 @@ from .state import FolderState, read_state, write_state
 EXIT_LOCKED = 0  # another run in progress is normal, not a failure
 EXIT_USAGE = 2
 
+CANCELLED = "cancelled"  # sentinel in state.last_error for user-cancelled runs
+
 # rclone bisync requires --resync on the very first run; detect its listing dir.
 _BISYNC_WORKDIR = Path("~/.cache/rclone/bisync").expanduser()
 
 
 def _timestamp() -> str:
     return datetime.now(UTC).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _filters_sig(folder: SyncFolder) -> str:
+    return "\n".join(folder.excludes)
+
+
+def _effective_action(folder: SyncFolder, action: str, state: FolderState,
+                      log: IO[str]) -> str:
+    """bisync needs --resync on the first run of a pair and whenever the
+    filter set changed since the last successful run (rclone can't detect
+    inline --exclude changes itself and would report false deletions)."""
+    if action != "bisync":
+        return action
+    if not _bisync_initialized(folder):
+        log.write(f"[{_timestamp()}] first bisync for this pair — using --resync\n")
+        return "bisync-resync"
+    if state.filters_sig is not None and state.filters_sig != _filters_sig(folder):
+        log.write(f"[{_timestamp()}] exclude patterns changed — using --resync\n")
+        return "bisync-resync"
+    return action
 
 
 def _bisync_initialized(folder: SyncFolder) -> bool:
@@ -78,9 +100,7 @@ def run_sync(folder: SyncFolder, action: str, *, dry_run: bool = False) -> int:
 
 
 def _run_locked(folder: SyncFolder, action: str, dry_run: bool, log: IO[str]) -> int:
-    if action == "bisync" and not _bisync_initialized(folder):
-        log.write(f"[{_timestamp()}] first bisync for this pair — using --resync\n")
-        action = "bisync-resync"
+    action = _effective_action(folder, action, read_state(folder.id), log)
     if folder.check_access and action.startswith("bisync") and not dry_run:
         _ensure_check_access_markers(folder, log)
 
@@ -136,19 +156,24 @@ def _run_locked(folder: SyncFolder, action: str, dry_run: bool, log: IO[str]) ->
             write_state(folder.id, state)
         if entry.get("level") == "error" or "failed" in str(entry.get("msg", "")).lower():
             last_error = str(entry.get("msg", ""))[:500]
-        if rclone.is_auth_error(line):
+        if rclone.entry_is_auth_error(entry):
             auth_error = True
 
     exit_code = proc.wait()
     for signum in signals_received:
         log.write(f"[{_timestamp()}] received signal {signum}, terminated rclone\n")
     log.write(f"[{_timestamp()}] exit code {exit_code}\n")
-    _finalize(folder.id, state, exit_code, last_error, auth_error=auth_error)
+    if signals_received:
+        # A cancel is not a failure — and definitely not an auth problem.
+        last_error, auth_error = CANCELLED, False
+    _finalize(folder.id, state, exit_code, last_error, auth_error=auth_error,
+              filters_sig=_filters_sig(folder))
     return exit_code
 
 
 def _finalize(folder_id: str, state: FolderState, exit_code: int,
-              last_error: str | None, *, auth_error: bool) -> None:
+              last_error: str | None, *, auth_error: bool,
+              filters_sig: str | None = None) -> None:
     state.running = False
     state.pid = None
     state.last_run = datetime.now(UTC).isoformat()
@@ -156,6 +181,7 @@ def _finalize(folder_id: str, state: FolderState, exit_code: int,
     state.last_error = last_error if exit_code != 0 else None
     if exit_code == 0:
         state.needs_reconnect = False
+        state.filters_sig = filters_sig
     elif auth_error:
         state.needs_reconnect = True
     write_state(folder_id, state)

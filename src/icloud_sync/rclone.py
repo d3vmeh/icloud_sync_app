@@ -19,11 +19,13 @@ ACTIONS = ("pull", "push", "bisync", "bisync-resync")
 
 # Signatures of an expired/invalid iCloud session (trust_token lapses ~monthly).
 _AUTH_ERROR_RE = re.compile(
-    r"401|unauthenticated|unauthorized|authentication|invalid.grant|"
+    r"\b401\b|unauthenticated|unauthorized|authentication|invalid.grant|"
     r"trust.?token|2fa|two.factor|login (?:failed|required)|couldn'?t login|"
     r"oauth|token (?:expired|has expired|invalid)",
     re.IGNORECASE,
 )
+
+_ERROR_LEVELS = ("error", "critical", "fatal")
 
 
 def build_command(folder: SyncFolder, action: str, *, dry_run: bool = False) -> list[str]:
@@ -43,6 +45,8 @@ def build_command(folder: SyncFolder, action: str, *, dry_run: bool = False) -> 
     else:
         raise ValueError(f"unknown action: {action}")
 
+    for pattern in folder.excludes:
+        cmd += ["--exclude", pattern]
     cmd += STATS_FLAGS
     if dry_run:
         cmd.append("--dry-run")
@@ -77,6 +81,14 @@ def extract_progress(entry: dict[str, Any]) -> Progress | None:
 
 def is_auth_error(text: str) -> bool:
     return bool(_AUTH_ERROR_RE.search(text))
+
+
+def entry_is_auth_error(entry: dict[str, Any]) -> bool:
+    """Auth signatures only count in error-level messages — stats lines are
+    full of numbers that can contain e.g. a literal 401."""
+    if entry.get("level") not in _ERROR_LEVELS:
+        return False
+    return is_auth_error(str(entry.get("msg", "")))
 
 
 def format_speed(bytes_per_s: float) -> str:

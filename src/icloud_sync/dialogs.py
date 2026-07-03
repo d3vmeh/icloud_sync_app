@@ -68,6 +68,14 @@ async def folder_dialog(folder: SyncFolder | None,
             element.on_value_change(update_hint)
         update_hint()
 
+        excludes = ui.textarea(
+            "Exclude patterns (one per line)",
+            value="" if is_new else "\n".join(folder.excludes),
+            placeholder="node_modules/**\n.git/**\n*.tmp",
+        ).props("outlined autogrow dense").classes("w-full")
+        ui.label("rclone filter syntax (rclone.org/filtering). Changing patterns on "
+                 "a bisync pair automatically triggers --resync on its next run.") \
+            .classes("subtle text-xs")
         check_access = ui.switch(
             "Bisync safety markers (--check-access with RCLONE_TEST files)",
             value=False if is_new else folder.check_access,
@@ -90,6 +98,8 @@ async def folder_dialog(folder: SyncFolder | None,
                 interval_minutes=None if is_new else folder.interval_minutes,
                 check_access=bool(check_access.value),
                 keep_parent=bool(keep_parent.value),
+                excludes=[line.strip() for line in excludes.value.splitlines()
+                          if line.strip()],
             )
             dialog.close()
             await on_save(result)

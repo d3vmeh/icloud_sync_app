@@ -127,6 +127,15 @@ you may need the
 [AppIndicator extension](https://extensions.gnome.org/extension/615/appindicator-support/)
 for the icon to be visible; the app works fine without a tray.
 
+### Excluding files
+
+Each folder takes a list of exclude patterns
+([rclone filter syntax](https://rclone.org/filtering/)) — useful for keeping
+things like `node_modules/**` or `.git/**` out of your syncs. Set them in the
+folder's edit dialog, one per line. Changing the patterns on a bisync pair
+automatically triggers `--resync` on its next run, since rclone would
+otherwise misread newly-excluded files as deletions.
+
 ### Bisync safety
 
 Two-way sync uses `rclone bisync` with `--conflict-resolve newer`; the first

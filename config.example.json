@@ -10,7 +10,8 @@
       "sync_on_startup": false,
       "interval_minutes": null,
       "check_access": false,
-      "keep_parent": true
+      "keep_parent": true,
+      "excludes": ["node_modules/**", ".git/**"]
     }
   ]
 }

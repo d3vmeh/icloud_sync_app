@@ -17,6 +17,7 @@ from nicegui import run, ui
 
 from . import dialogs, paths, rclone, systemd, theme
 from .config import SyncFolder
+from .runner import CANCELLED
 from .state import FolderState, read_state
 
 _TAIL_INITIAL_BYTES = 8_192
@@ -186,6 +187,10 @@ class FolderCard:
         elif folder_state.exit_code == 0:
             self._set_dot("success")
             self.status_label.text = f"Success · {_ago(folder_state.last_run)}"
+            self.card.classes(remove="card-running card-failed")
+        elif folder_state.exit_code is not None and folder_state.last_error == CANCELLED:
+            self._set_dot("idle")
+            self.status_label.text = f"Cancelled · {_ago(folder_state.last_run)}"
             self.card.classes(remove="card-running card-failed")
         elif folder_state.exit_code is not None:
             self._set_dot("failed")
