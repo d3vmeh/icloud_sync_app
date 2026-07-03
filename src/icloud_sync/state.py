@@ -21,6 +21,7 @@ class Progress:
     speed: float = 0.0
     eta: int | None = None
     transferring: int = 0
+    current_file: str | None = None  # name of the object rclone is moving right now
 
     @property
     def percent(self) -> float:

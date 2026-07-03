@@ -70,12 +70,17 @@ def extract_progress(entry: dict[str, Any]) -> Progress | None:
     if not isinstance(stats, dict):
         return None
     eta = stats.get("eta")
+    transferring = stats.get("transferring") or []
+    current_file = None
+    if transferring and isinstance(transferring[0], dict):
+        current_file = transferring[0].get("name")
     return Progress(
         bytes_done=int(stats.get("bytes") or 0),
         bytes_total=int(stats.get("totalBytes") or 0),
         speed=float(stats.get("speed") or 0.0),
         eta=int(eta) if eta is not None else None,
-        transferring=len(stats.get("transferring") or []),
+        transferring=len(transferring),
+        current_file=current_file,
     )
 
 

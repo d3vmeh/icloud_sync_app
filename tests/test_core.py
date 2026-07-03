@@ -104,8 +104,21 @@ class TestRcloneParsing:
         entry = rclone.parse_line(line)
         progress = rclone.extract_progress(entry)
         assert progress == Progress(bytes_done=50, bytes_total=200, speed=1024.0,
-                                    eta=12, transferring=1)
+                                    eta=12, transferring=1, current_file="a")
         assert progress.percent == 0.25
+
+    def test_current_file_is_first_transferring_name(self):
+        line = json.dumps({"stats": {"transferring": [
+            {"name": "dir/big.zip", "bytes": 5}, {"name": "dir/other.bin"}]}})
+        progress = rclone.extract_progress(rclone.parse_line(line))
+        assert progress.transferring == 2
+        assert progress.current_file == "dir/big.zip"
+
+    def test_no_transfer_leaves_current_file_none(self):
+        line = json.dumps({"stats": {"bytes": 0, "totalBytes": 0, "checks": 40}})
+        progress = rclone.extract_progress(rclone.parse_line(line))
+        assert progress.transferring == 0
+        assert progress.current_file is None
 
     def test_non_json_line(self):
         assert rclone.parse_line("plain text output") is None

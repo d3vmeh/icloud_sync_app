@@ -10,8 +10,10 @@ from nicegui import ui
 from .config import SyncFolder, slugify
 from .state import read_state, write_state
 
-MODES = {"pull": "Pull (iCloud → local)", "push": "Push (local → iCloud)",
-         "bisync": "Bisync (two-way)"}
+# Bisync first (the recommended default); Pull is intentionally not offered for
+# new folders — it's still selectable if editing a folder that already uses it.
+MODES = {"bisync": "Bisync (two-way)", "push": "Push (local → iCloud)"}
+_LEGACY_MODE_LABELS = {"pull": "Pull (iCloud → local)"}
 
 
 async def list_remotes() -> list[str]:
@@ -46,7 +48,10 @@ async def folder_dialog(folder: SyncFolder | None,
             else:
                 remote = ui.input("rclone remote name",
                                   value="" if is_new else folder.remote).classes("flex-1")
-            mode = ui.select(MODES, label="Mode",
+            mode_options = dict(MODES)
+            if not is_new and folder.mode not in mode_options:
+                mode_options[folder.mode] = _LEGACY_MODE_LABELS.get(folder.mode, folder.mode)
+            mode = ui.select(mode_options, label="Mode",
                              value="bisync" if is_new else folder.mode).classes("flex-1")
         remote_path = ui.input("Remote path", placeholder="Documents/MyFolder",
                                value="" if is_new else folder.remote_path).classes("w-full")

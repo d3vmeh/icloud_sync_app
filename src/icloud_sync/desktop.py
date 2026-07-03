@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -45,8 +46,22 @@ Terminal=false
 Categories=Utility;FileTools;
 Keywords=icloud;rclone;sync;backup;
 StartupNotify=true
+StartupWMClass={DESKTOP_ID}
 """)
+    _refresh_caches()
     return desktop_path
+
+
+def _refresh_caches() -> None:
+    """Nudge the desktop DB and icon cache so a freshly installed launcher and
+    icon are picked up without a re-login. Best-effort — missing tools are fine."""
+    apps_dir = _data_home() / "applications"
+    icon_theme = _data_home() / "icons" / "hicolor"
+    for cmd in (["update-desktop-database", str(apps_dir)],
+                ["gtk-update-icon-cache", "-f", "-t", str(icon_theme)]):
+        exe = shutil.which(cmd[0])
+        if exe:
+            subprocess.run([exe, *cmd[1:]], capture_output=True)
 
 
 def uninstall_desktop_entry() -> None:

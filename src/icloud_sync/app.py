@@ -142,6 +142,19 @@ def _native_available() -> bool:
     )
 
 
+def _bind_desktop_identity() -> None:
+    """Tell Qt which .desktop entry this window belongs to. Without this the
+    compositor can't match the native window to its launcher, so GNOME/Wayland
+    shows a generic icon in the dock instead of the app icon. Must run before
+    pywebview creates the QApplication. No-op if PyQt isn't the backend."""
+    from .desktop import DESKTOP_ID
+    try:
+        from PyQt6.QtGui import QGuiApplication
+    except ImportError:
+        return
+    QGuiApplication.setDesktopFileName(DESKTOP_ID)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="icloud-sync",
                                      description="iCloud Drive sync control panel")
@@ -171,6 +184,7 @@ def main() -> None:
     native = _native_available() and not args.browser and not args.no_show
     _setup_tray(native=native, port=args.port)
     if native:
+        _bind_desktop_identity()
         ui.run(native=True, title="iCloud Sync", window_size=(980, 860),
                reload=False, dark=True)
     else:

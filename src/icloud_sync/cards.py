@@ -53,6 +53,8 @@ class FolderCard:
                 with ui.button(icon="more_vert").props("flat dense round color=grey-6"):
                     with ui.menu():
                         ui.menu_item("Edit", lambda: self.on_edit(f))
+                        ui.menu_item("Pull (iCloud → local)",
+                                     lambda: self._start("pull"))
                         ui.menu_item("Bisync --resync (first run)",
                                      lambda: self._start("bisync-resync"))
                         ui.menu_item("systemd status", self._show_unit_status)
@@ -66,20 +68,18 @@ class FolderCard:
             with ui.column().classes("w-full gap-0") as self.progress_box:
                 self.progress = ui.linear_progress(value=0.0, show_value=False) \
                     .classes("w-full").props("rounded size=8px color=warning")
-                with ui.row().classes("w-full justify-between"):
-                    self.progress_pct = ui.label("").classes("text-xs subtle")
-                    self.progress_info = ui.label("").classes("text-xs subtle")
+                with ui.row().classes("w-full justify-between items-center gap-2 no-wrap"):
+                    self.progress_pct = ui.label("").classes("text-xs subtle whitespace-nowrap")
+                    self.progress_info = ui.label("").classes("text-xs subtle truncate min-w-0")
             self.progress_box.set_visibility(False)
 
             with ui.row().classes("w-full items-center gap-2"):
                 self.dry = ui.switch("Dry run").props("dense")
                 ui.space()
-                self.btn_pull = ui.button("Pull", on_click=lambda: self._start("pull")) \
-                    .props("unelevated dense icon=download")
-                self.btn_push = ui.button("Push", on_click=lambda: self._start("push")) \
-                    .props("unelevated dense icon=upload")
                 self.btn_bisync = ui.button("Bisync", on_click=lambda: self._start("bisync")) \
                     .props("unelevated dense icon=sync color=secondary")
+                self.btn_push = ui.button("Push", on_click=lambda: self._start("push")) \
+                    .props("unelevated dense icon=upload")
                 self.btn_cancel = ui.button("Cancel", on_click=self._cancel) \
                     .props("outline dense icon=stop color=negative")
                 self.btn_cancel.set_visibility(False)
@@ -102,7 +102,7 @@ class FolderCard:
             with ui.expansion("Log", icon="terminal").classes("w-full"):
                 self.log = ui.log(max_lines=1000).classes("w-full h-48 mono-log")
 
-        self._action_buttons = [self.btn_pull, self.btn_push, self.btn_bisync]
+        self._action_buttons = [self.btn_bisync, self.btn_push]
 
     # -- actions --------------------------------------------------------------
 
@@ -208,11 +208,20 @@ class FolderCard:
         self.progress_box.set_visibility(show)
         if not show:
             return
-        self.progress.value = round(progress.percent, 3)
-        self.progress_pct.text = f"{progress.percent * 100:.0f}%"
-        self.progress_info.text = (f"{rclone.format_speed(progress.speed)} · "
-                                   f"ETA {rclone.format_eta(progress.eta)} · "
-                                   f"{progress.transferring} transferring")
+        if progress.transferring == 0:
+            # No bytes moving — rclone is listing/checking (bisync spends most of
+            # its time here). A static 100% bar reads as "done", so show an
+            # animated indeterminate bar instead.
+            self.progress.props(add="indeterminate")
+            self.progress_pct.text = "Checking…"
+            self.progress_info.text = f"{rclone.format_speed(progress.speed)}"
+        else:
+            self.progress.props(remove="indeterminate")
+            self.progress.value = round(progress.percent, 3)
+            self.progress_pct.text = f"{progress.percent * 100:.0f}%"
+            detail = progress.current_file or f"{progress.transferring} transferring"
+            self.progress_info.text = (f"{rclone.format_speed(progress.speed)} · "
+                                       f"ETA {rclone.format_eta(progress.eta)} · {detail}")
 
     def _set_dot(self, status: str, *, pulse: bool = False) -> None:
         color = theme.STATUS_COLORS[status]
