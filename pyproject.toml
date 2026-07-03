@@ -1,0 +1,47 @@
+[project]
+name = "icloud-sync"
+version = "0.1.0"
+description = "Desktop control panel + background runner for syncing iCloud Drive folders on Linux via rclone"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+keywords = ["rclone", "icloud", "sync", "nicegui", "systemd"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Archiving :: Mirroring",
+]
+dependencies = [
+    "nicegui>=2.11,<3",
+]
+
+[project.optional-dependencies]
+native = [
+    "pywebview>=5.3",
+    "qtpy>=2.4",
+    "PyQt6>=6.6",
+    "PyQt6-WebEngine>=6.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-username/icloud-sync"
+
+[project.scripts]
+icloud-sync = "icloud_sync.app:main"
+icloud-sync-runner = "icloud_sync.runner:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pre-commit>=4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/icloud_sync"]

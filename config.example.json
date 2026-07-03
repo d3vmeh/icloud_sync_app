@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "id": "documents",
+      "name": "Documents",
+      "remote": "your-remote-name",
+      "remote_path": "RemotePath/Folder",
+      "local_path": "~/local-folder",
+      "mode": "bisync",
+      "sync_on_startup": false,
+      "interval_minutes": null,
+      "check_access": false
+    }
+  ]
+}
