@@ -34,8 +34,8 @@ interrupts a transfer.
 ## Install & run
 
 ```bash
-git clone https://github.com/your-username/icloud-sync
-cd icloud-sync
+git clone https://github.com/d3vmeh/icloud_sync_app
+cd icloud_sync_app
 uv sync
 uv run icloud-sync            # opens the control panel
 ```

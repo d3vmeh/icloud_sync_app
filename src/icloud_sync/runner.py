@@ -108,8 +108,12 @@ def _run_locked(folder: SyncFolder, action: str, dry_run: bool, log: IO[str]) ->
 
     # Forward SIGTERM/SIGINT (GUI cancel, systemctl stop) to rclone so it can
     # shut down cleanly; we still fall through to _finalize afterwards.
+    # No file I/O here: a handler firing mid-write would make a reentrant
+    # call into the buffered log writer. Log it after the read loop instead.
+    signals_received: list[int] = []
+
     def _forward(signum: int, _frame: object) -> None:
-        log.write(f"[{_timestamp()}] received signal {signum}, terminating rclone\n")
+        signals_received.append(signum)
         proc.terminate()
 
     signal.signal(signal.SIGTERM, _forward)
@@ -136,6 +140,8 @@ def _run_locked(folder: SyncFolder, action: str, dry_run: bool, log: IO[str]) ->
             auth_error = True
 
     exit_code = proc.wait()
+    for signum in signals_received:
+        log.write(f"[{_timestamp()}] received signal {signum}, terminated rclone\n")
     log.write(f"[{_timestamp()}] exit code {exit_code}\n")
     _finalize(folder.id, state, exit_code, last_error, auth_error=auth_error)
     return exit_code
