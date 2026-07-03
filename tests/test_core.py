@@ -73,6 +73,15 @@ class TestRcloneCommands:
         assert "--resync" in cmd
         assert cmd[-1] == "--dry-run"
         assert "--conflict-resolve" in cmd
+        # resilience + newer-wins resync so a single bad file doesn't abort and
+        # a fresh local edit isn't clobbered by an older cloud copy
+        assert "--resilient" in cmd and "--recover" in cmd
+        assert cmd[cmd.index("--resync-mode") + 1] == "newer"
+
+    def test_plain_bisync_has_no_resync(self):
+        cmd = rclone.build_command(make_folder(), "bisync")
+        assert "--resync" not in cmd and "--resync-mode" not in cmd
+        assert "--resilient" in cmd
 
     def test_unknown_action(self):
         with pytest.raises(ValueError):
@@ -185,3 +194,17 @@ class TestRunnerResyncDecision:
         monkeypatch.setattr("icloud_sync.runner._bisync_initialized", lambda f: True)
         folder = make_folder(excludes=["a"])
         assert self._decide(folder, FolderState(filters_sig=""), "pull") == "pull"
+
+    def test_bisync_initialized_matches_spaced_path_and_final_lst(self, monkeypatch, tmp_path):
+        from icloud_sync.runner import _bisync_initialized
+        monkeypatch.setattr("icloud_sync.runner._BISYNC_WORKDIR", tmp_path)
+        folder = make_folder(keep_parent=True, local_path="/home/me/iCloud Documents",
+                             remote_path="Documents/LABKickstart-org")
+        # rclone encodes the space in "iCloud Documents" as '_'
+        stem = "r_Documents_LABKickstart-org..home_me_iCloud_Documents_LABKickstart-org.path1"
+        # an aborted/in-flight run leaves only a temp listing -> not initialised
+        (tmp_path / f"{stem}.lst-new").touch()
+        assert _bisync_initialized(folder) is False
+        # a completed baseline (.lst) -> initialised (spaced path still matches)
+        (tmp_path / f"{stem}.lst").touch()
+        assert _bisync_initialized(folder) is True

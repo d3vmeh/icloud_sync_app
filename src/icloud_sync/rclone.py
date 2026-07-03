@@ -37,11 +37,18 @@ def build_command(folder: SyncFolder, action: str, *, dry_run: bool = False) -> 
     elif action == "push":
         cmd = ["rclone", "copy", local, remote]
     elif action in ("bisync", "bisync-resync"):
-        cmd = ["rclone", "bisync", remote, local, "--conflict-resolve", "newer"]
+        # --resilient/--recover let a run survive a transient single-file error
+        # (e.g. iCloud serving a truncated object) instead of aborting the whole
+        # pair and demanding a manual --resync.
+        cmd = ["rclone", "bisync", remote, local, "--conflict-resolve", "newer",
+               "--resilient", "--recover"]
         if folder.check_access:
             cmd.append("--check-access")
         if action == "bisync-resync":
-            cmd.append("--resync")
+            # Seed the baseline with the newer side winning (not the default
+            # path1/remote-wins), so a fresh local edit is never overwritten by
+            # an older cloud copy — consistent with --conflict-resolve newer.
+            cmd += ["--resync", "--resync-mode", "newer"]
     else:
         raise ValueError(f"unknown action: {action}")
 

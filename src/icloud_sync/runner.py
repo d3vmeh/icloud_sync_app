@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -58,10 +59,15 @@ def _effective_action(folder: SyncFolder, action: str, state: FolderState,
 def _bisync_initialized(folder: SyncFolder) -> bool:
     if not _BISYNC_WORKDIR.is_dir():
         return False
-    # rclone names listing files after both sync ends; match on the folder id-agnostic
-    # local path component, which is stable across runs.
-    token = str(folder.local_target).strip("/").replace("/", "_")
-    return any(token in p.name for p in _BISYNC_WORKDIR.iterdir())
+    # rclone derives each listing file's name from the canonicalised paths,
+    # replacing every character outside [A-Za-z0-9._-] with '_' — so '/', ':'
+    # and *spaces* all become '_'. Match that exact encoding (a plain '/'->'_'
+    # swap misses any path with a space and forces a --resync every run). Only
+    # count a completed baseline (a `.lst` file), not the `.lst-new`/`.lst-old`
+    # temporaries an aborted or in-flight run leaves behind.
+    token = re.sub(r"[^A-Za-z0-9._-]", "_", str(folder.local_target).strip("/"))
+    return any(token in p.name and p.name.endswith(".lst")
+               for p in _BISYNC_WORKDIR.iterdir())
 
 
 def _ensure_check_access_markers(folder: SyncFolder, log: IO[str]) -> None:
