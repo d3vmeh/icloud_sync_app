@@ -38,13 +38,13 @@ def _bisync_initialized(folder: SyncFolder) -> bool:
         return False
     # rclone names listing files after both sync ends; match on the folder id-agnostic
     # local path component, which is stable across runs.
-    token = str(folder.local_expanded).strip("/").replace("/", "_")
+    token = str(folder.local_target).strip("/").replace("/", "_")
     return any(token in p.name for p in _BISYNC_WORKDIR.iterdir())
 
 
 def _ensure_check_access_markers(folder: SyncFolder, log: IO[str]) -> None:
     """--check-access aborts unless RCLONE_TEST exists on both sides."""
-    local_marker = folder.local_expanded / rclone.CHECK_ACCESS_MARKER
+    local_marker = folder.local_target / rclone.CHECK_ACCESS_MARKER
     if not local_marker.exists():
         local_marker.parent.mkdir(parents=True, exist_ok=True)
         local_marker.touch()

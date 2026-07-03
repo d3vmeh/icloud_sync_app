@@ -32,6 +32,7 @@ class SyncFolder:
     sync_on_startup: bool = False
     interval_minutes: int | None = None
     check_access: bool = False
+    keep_parent: bool = False
 
     @property
     def remote_full(self) -> str:
@@ -40,6 +41,16 @@ class SyncFolder:
     @property
     def local_expanded(self) -> Path:
         return Path(self.local_path).expanduser()
+
+    @property
+    def local_target(self) -> Path:
+        """Where rclone actually syncs to. rclone copies a directory's
+        *contents*, so keep_parent recreates the remote folder itself
+        (e.g. `.../MyFolder`) inside the local path."""
+        name = Path(self.remote_path).name
+        if self.keep_parent and name:
+            return self.local_expanded / name
+        return self.local_expanded
 
     @classmethod
     def new(cls, name: str, remote: str, remote_path: str, local_path: str,

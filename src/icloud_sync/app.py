@@ -10,10 +10,11 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import webbrowser
 
-from nicegui import run, ui
+from nicegui import app, run, ui
 
-from . import __version__, dialogs, systemd, theme
+from . import __version__, dialogs, systemd, theme, tray
 from .cards import FolderCard
 from .config import AppConfig, SyncFolder, load_config, save_config
 from .state import read_state
@@ -120,6 +121,7 @@ class Panel:
         self.config.upsert(folder)
         save_config(self.config)
         self.rebuild_cards()
+        tray.refresh_menu()
         ui.notify(f"Saved “{folder.name}”", type="positive")
 
     async def _delete_folder(self, folder: SyncFolder) -> None:
@@ -128,6 +130,7 @@ class Panel:
             self.config.remove(folder.id)
             save_config(self.config)
             self.rebuild_cards()
+            tray.refresh_menu()
             ui.notify(f"Removed “{folder.name}”", type="info")
 
         dialogs.confirm_delete(folder, confirmed)
@@ -152,12 +155,37 @@ def main() -> None:
     Panel().build()
 
     native = _native_available() and not args.browser and not args.no_show
+    _setup_tray(native=native, port=args.port)
     if native:
         ui.run(native=True, title="iCloud Sync", window_size=(980, 860),
                reload=False, dark=True)
     else:
         ui.run(title="iCloud Sync", port=args.port, show=not args.no_show,
                reload=False, dark=True)
+
+
+def _setup_tray(*, native: bool, port: int) -> None:
+    """Tray callbacks run in the tray's own thread — keep them thread-safe."""
+    if native:
+        def show() -> None:
+            if app.native.main_window is not None:
+                app.native.main_window.show()
+
+        def hide() -> None:
+            if app.native.main_window is not None:
+                app.native.main_window.hide()
+    else:
+        def show() -> None:
+            webbrowser.open(f"http://127.0.0.1:{port}/")
+
+        hide = None
+
+    def quit_app() -> None:
+        tray.stop()
+        app.shutdown()
+
+    app.on_startup(lambda: tray.start(show, hide, quit_app))
+    app.on_shutdown(tray.stop)
 
 
 if __name__ == "__main__":

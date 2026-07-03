@@ -98,6 +98,24 @@ the remote **by name only**.
 A [`config.example.json`](config.example.json) shows the config shape with
 placeholder values.
 
+### Folder layout
+
+rclone syncs a directory's *contents*, so pulling `Documents/MyFolder` into
+`~/sync` would normally scatter its files directly into `~/sync`. Each folder
+has a **“Keep the remote folder name locally”** toggle (on by default for new
+folders) that recreates the remote folder itself — files land in
+`~/sync/MyFolder` instead. The dialog shows the effective target path as you
+type.
+
+### System tray
+
+The app adds a tray icon with quick **Pull** / **Push** actions per folder,
+plus show/hide window and quit. Quick actions run through the same background
+runner, so their progress appears in the panel like any other sync. On GNOME
+you may need the
+[AppIndicator extension](https://extensions.gnome.org/extension/615/appindicator-support/)
+for the icon to be visible; the app works fine without a tray.
+
 ### Bisync safety
 
 Two-way sync uses `rclone bisync` with `--conflict-resolve newer`; the first

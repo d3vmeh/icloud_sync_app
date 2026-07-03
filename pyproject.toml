@@ -16,6 +16,8 @@ classifiers = [
 ]
 dependencies = [
     "nicegui>=2.11,<3",
+    "pystray>=0.19",
+    "pillow>=10",
 ]
 
 [project.optional-dependencies]

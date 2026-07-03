@@ -28,7 +28,7 @@ _AUTH_ERROR_RE = re.compile(
 
 def build_command(folder: SyncFolder, action: str, *, dry_run: bool = False) -> list[str]:
     remote = folder.remote_full
-    local = str(folder.local_expanded)
+    local = str(folder.local_target)
 
     if action == "pull":
         cmd = ["rclone", "copy", remote, local]

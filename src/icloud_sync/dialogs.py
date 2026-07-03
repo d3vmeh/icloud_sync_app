@@ -52,6 +52,22 @@ async def folder_dialog(folder: SyncFolder | None,
                                value="" if is_new else folder.remote_path).classes("w-full")
         local_path = ui.input("Local path", placeholder="~/my-folder",
                               value="" if is_new else folder.local_path).classes("w-full")
+        keep_parent = ui.switch(
+            "Keep the remote folder name locally",
+            value=True if is_new else folder.keep_parent,
+        ).props("dense")
+        target_hint = ui.label().classes("path-caption")
+
+        def update_hint() -> None:
+            base = (local_path.value or "~/…").rstrip("/")
+            name = (remote_path.value or "").rstrip("/").rsplit("/", 1)[-1]
+            target = f"{base}/{name}" if keep_parent.value and name else base
+            target_hint.text = f"Files will sync to: {target}"
+
+        for element in (remote_path, local_path, keep_parent):
+            element.on_value_change(update_hint)
+        update_hint()
+
         check_access = ui.switch(
             "Bisync safety markers (--check-access with RCLONE_TEST files)",
             value=False if is_new else folder.check_access,
@@ -73,6 +89,7 @@ async def folder_dialog(folder: SyncFolder | None,
                 sync_on_startup=False if is_new else folder.sync_on_startup,
                 interval_minutes=None if is_new else folder.interval_minutes,
                 check_access=bool(check_access.value),
+                keep_parent=bool(keep_parent.value),
             )
             dialog.close()
             await on_save(result)

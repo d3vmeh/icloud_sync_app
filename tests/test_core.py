@@ -78,6 +78,17 @@ class TestRcloneCommands:
         with pytest.raises(ValueError):
             rclone.build_command(make_folder(), "explode")
 
+    def test_keep_parent_nests_remote_folder_locally(self):
+        folder = make_folder(keep_parent=True, local_path="/data/sync",
+                             remote_path="Documents/MyFolder")
+        assert str(folder.local_target) == "/data/sync/MyFolder"
+        cmd = rclone.build_command(folder, "pull")
+        assert cmd[3] == "/data/sync/MyFolder"
+
+    def test_keep_parent_off_syncs_contents_directly(self):
+        folder = make_folder(local_path="/data/sync")
+        assert str(folder.local_target) == "/data/sync"
+
 
 class TestRcloneParsing:
     def test_stats_line(self):

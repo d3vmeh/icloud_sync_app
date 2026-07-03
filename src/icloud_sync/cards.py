@@ -59,7 +59,7 @@ class FolderCard:
                         ui.menu_item("Delete", lambda: self.on_delete(f)) \
                             .classes("text-negative")
 
-            ui.label(f"{f.remote_full}  ⇄  {f.local_path}").classes("path-caption")
+            ui.label(f"{f.remote_full}  ⇄  {f.local_target}").classes("path-caption")
 
             # Progress (visible while a run is active)
             with ui.column().classes("w-full gap-0") as self.progress_box:

@@ -9,7 +9,8 @@
       "mode": "bisync",
       "sync_on_startup": false,
       "interval_minutes": null,
-      "check_access": false
+      "check_access": false,
+      "keep_parent": true
     }
   ]
 }
