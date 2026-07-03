@@ -143,16 +143,35 @@ def _native_available() -> bool:
 
 
 def _bind_desktop_identity() -> None:
-    """Tell Qt which .desktop entry this window belongs to. Without this the
-    compositor can't match the native window to its launcher, so GNOME/Wayland
-    shows a generic icon in the dock instead of the app icon. Must run before
-    pywebview creates the QApplication. No-op if PyQt isn't the backend."""
+    """Make the native window advertise the app's .desktop identity, so GNOME/
+    Wayland matches it to the launcher and shows the app icon in the dock
+    instead of a generic 'python3' one.
+
+    NiceGUI opens the window in a *child* process (``mp.Process``) and pywebview
+    builds the QApplication there, so setting the Qt identity in this parent
+    process is too late. Instead we wrap pywebview's ``start()`` to set the Qt
+    application name + desktop file name inside that child, right before the
+    QApplication is created; the forked child inherits this monkeypatch. No-op
+    if pywebview/PyQt aren't the backend."""
     from .desktop import DESKTOP_ID
     try:
-        from PyQt6.QtGui import QGuiApplication
+        import webview
     except ImportError:
         return
-    QGuiApplication.setDesktopFileName(DESKTOP_ID)
+
+    real_start = webview.start
+
+    def start_with_identity(*args: object, **kwargs: object) -> object:
+        try:
+            from PyQt6.QtCore import QCoreApplication
+            from PyQt6.QtGui import QGuiApplication
+            QCoreApplication.setApplicationName(DESKTOP_ID)
+            QGuiApplication.setDesktopFileName(DESKTOP_ID)
+        except Exception:
+            pass
+        return real_start(*args, **kwargs)
+
+    webview.start = start_with_identity
 
 
 def main() -> None:
