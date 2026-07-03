@@ -107,6 +107,17 @@ folders) that recreates the remote folder itself — files land in
 `~/sync/MyFolder` instead. The dialog shows the effective target path as you
 type.
 
+### Launch from the dock
+
+```bash
+uv run icloud-sync --install-desktop
+```
+
+installs an app icon and launcher entry (`~/.local/share/applications/`), so
+iCloud Sync shows up in your app grid — from there, right-click it and
+choose **Pin to Dash / Add to Favorites** to keep it in the dock.
+`--uninstall-desktop` removes it again.
+
 ### System tray
 
 The app adds a tray icon with quick **Pull** / **Push** actions per folder,

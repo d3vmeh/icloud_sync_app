@@ -150,7 +150,21 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8990)
     parser.add_argument("--no-show", action="store_true",
                         help="start the server without opening a window (debug)")
+    parser.add_argument("--install-desktop", action="store_true",
+                        help="install an app icon + launcher for the desktop/dock, then exit")
+    parser.add_argument("--uninstall-desktop", action="store_true",
+                        help="remove the desktop launcher, then exit")
     args = parser.parse_args()
+
+    if args.install_desktop:
+        from .desktop import install_desktop_entry
+        print(f"installed {install_desktop_entry()}")
+        return
+    if args.uninstall_desktop:
+        from .desktop import uninstall_desktop_entry
+        uninstall_desktop_entry()
+        print("desktop launcher removed")
+        return
 
     Panel().build()
 

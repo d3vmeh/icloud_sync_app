@@ -14,23 +14,10 @@ import threading
 from collections.abc import Callable
 
 from . import systemd
+from .appicon import make_image
 from .config import load_config
 
 _icon = None  # module singleton, set by start()
-
-
-def _make_image():
-    from PIL import Image, ImageDraw
-
-    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    blue = (10, 132, 255, 255)
-    # simple cloud silhouette
-    draw.ellipse((6, 26, 32, 52), fill=blue)
-    draw.ellipse((18, 12, 48, 42), fill=blue)
-    draw.ellipse((36, 24, 58, 46), fill=blue)
-    draw.rectangle((16, 38, 48, 52), fill=blue)
-    return img
 
 
 def _quick_sync(folder_id: str, action: str) -> None:
@@ -75,7 +62,7 @@ def start(on_show: Callable[[], None], on_hide: Callable[[], None] | None,
         return False
 
     try:
-        _icon = pystray.Icon("icloud-sync", _make_image(), "iCloud Sync",
+        _icon = pystray.Icon("icloud-sync", make_image(64), "iCloud Sync",
                              menu=_build_menu(pystray, on_show, on_hide, on_quit))
     except Exception:  # noqa: BLE001
         return False
